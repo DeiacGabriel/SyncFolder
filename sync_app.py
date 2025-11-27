@@ -178,3 +178,49 @@ class App(ctk.CTk):
                 self.lbl_folder1.configure(text=path, text_color="white")
             else:
                 self.path2_cache = path
+                self.lbl_folder2.configure(text=path, text_color="white")
+
+    def add_sync_pair(self):
+        """Fügt ein neues Spiegelungspaar hinzu"""
+        if not self.path1_cache or not self.path2_cache:
+            self.log_message("Fehler: Beide Ordner müssen ausgewählt sein.")
+            return
+        
+        pair = SyncPair(self.path1_cache, self.path2_cache, self.log_message)
+        pair.start()
+        self.sync_pairs.append(pair)
+        
+        label = ctk.CTkLabel(self.scroll_frame, 
+                           text=f"{os.path.basename(self.path1_cache)} <-> {os.path.basename(self.path2_cache)}")
+        label.pack(pady=2)
+        
+        self.log_message(f"Spiegelung hinzugefügt: {self.path1_cache} <-> {self.path2_cache}")
+        
+        self.path1_cache = ""
+        self.path2_cache = ""
+        self.lbl_folder1.configure(text="Kein Ordner gewählt", text_color="gray")
+        self.lbl_folder2.configure(text="Kein Ordner gewählt", text_color="gray")
+
+    def trigger_manual_sync(self):
+        """Führt manuellen Sync für alle Paare aus"""
+        if not self.sync_pairs:
+            self.log_message("Keine aktiven Spiegelungen vorhanden.")
+            return
+        
+        def _sync():
+            for pair in self.sync_pairs:
+                pair.manual_sync()
+        
+        threading.Thread(target=_sync, daemon=True).start()
+
+    def on_closing(self):
+        """Stoppt alle Observer vor dem Schließen"""
+        self.log_message("Beende alle Überwachungen...")
+        for pair in self.sync_pairs:
+            pair.stop()
+        self.destroy()
+
+if __name__ == "__main__":
+    app = App()
+    app.protocol("WM_DELETE_WINDOW", app.on_closing)
+    app.mainloop()
